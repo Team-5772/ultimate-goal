@@ -1,0 +1,240 @@
+    /* Foundation movement and parking using encoders
+     *  Uses relative moves, based on encoder counts.
+     *  Encoders are not reset as movement is based on the current encoder position.
+     *  Move will stop if any of three conditions occur:
+     *  1) Move gets to the desired position based on encoder value.
+     *  2) Move runs out of time (times out)
+     *  3) User manually stops the opmode running.
+     */
+
+package org.firstinspires.ftc.teamcode;
+
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.util.Hardware;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
+import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.util.ElapsedTime;
+
+
+
+@Autonomous(name="RFoundEnc", group="Autonomous")
+
+public class RFoundEnc extends LinearOpMode {
+
+    /* Declare OpMode members. */
+    HardwareStrafer         robot   = new HardwareStrafer();   // Use the Strafer's hardware
+    private ElapsedTime     runtime = new ElapsedTime();
+
+    //user defined variables 
+    static final double    ticks    = 383.6; //Number of ticks in one motor rotation
+    static final double    gear_ratio    = 0.5; //Motor gear divided by axle gear
+    static final double    wheel_diameter    = 4.0; //Wheel diameter in inches
+    static final double    gear_diameter = 1.0; //Inches lifter per motor rotation
+
+    /* The Maths!
+     * One wheel rotation is the total encoder ticks for one revolution multiplied by the gear ratio.
+     * The wheel circumference is the wheel diameter times pi.
+     * The robot will move a distance equal to one wheel circumference per one wheel rotation.
+     * One wheel rotation divided by the wheel circumference will calculate the number of ticks necessary to move one inch.
+     */
+
+    static final double    ticks_per_inch    = (ticks * gear_ratio) / (wheel_diameter * Math.PI);
+    static final double    lift_ratio	    = (ticks) / (gear_diameter * Math.PI)
+
+    @Override
+    public void runOpMode() {
+
+        /*
+         * Initialize the drive system variables.
+         * The init() method of the hardware class does all the work here
+         */
+        robot.init(hardwareMap);
+        //Stop and reset encoders
+        //telemetry.addData(”Encoders reset”);    //on screen message
+        //telemetry.update();
+        robot.frontright.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        robot.rearright.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        robot.frontleft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        robot.rearleft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        robot.intake.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        robot.launcher.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        robot.cascade.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        
+        // Set all drive motors to RUN_TO_POSITION.
+        // Set other motors to RUN_WITHOUT_ENCODER or RUN_WITH_ENCODER.
+        robot.frontright.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        robot.rearright.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        robot.frontleft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        robot.rearleft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        robot.intake.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        robot.launcher.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        robot.cascade.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        
+        // Send telemetry message to signify robot waiting;
+        telemetry.addData("Status", "Ready to run");    //
+        telemetry.update();
+
+        // Wait for the game to start (driver presses PLAY)
+        waitForStart();
+
+       //Step 0: Grab wobble goal 1
+        robot.reach.setPosition (0.25); //Reach forward
+        sleep(100); 
+        robot.pincher.setPosition(1); //Grab wobble goal 1
+        sleep(100);
+        robot.cascade.setTargetPosition(
+
+
+        //Step 1: Drive at 60% speed, Backwards 36 inches, timeout at 5 seconds.
+        encoderDrive(0.6,  -30,  -30, -30, -30, 5.0);
+        
+        
+        //Step 3: Tow foundation forward 24 inches, timeout at 4 seconds
+        encoderDrive(0.6, 24, 24, 24, 24, 4.0);
+
+        //Step 4: Rotate foundation Right, timeout at 4 seconds
+        encoderDrive(0.4, 12, -12, 12, -12, 4.0);  // S3: Reverse 24 Inches with 4 Sec timeout
+        
+        //Step 5: Push foundation against wall. (Back up)
+        encoderDrive(0.6, -14, -14, -14, -14, 4.0);
+
+        //Step 6: Raise hooks
+        robot.lefthook.setPosition(1);
+        robot.righthook.setPosition(0);
+        sleep(1000);
+
+        //Step 7: Strafe to wall
+        encoderDrive(1, 24, -24, -24, 24, 4.0);
+
+        //Step 8: Park under bridge (Drive forward)
+        encoderDrive(0.6, 36, 36, 36, 36, 4.0);
+}
+/*
+------------------------------------------------------------------
+Code for cascadeLift function (% motor speed, change in height in inches, timeout in seconds)
+*/
+    public void cascadeLift(double speed,double casinches,double timeoutS) {
+        int castarget; //Cascade Target Height
+
+    // Ensure that the opmode is still active
+    If (opModelsActive()) {
+
+        // Calculate new target position.
+       Castarget = robot.cascade.getCurrentPosition() + (int)(casinches * lift_ratio);
+
+        // Set motors to new target position
+       robot.cascade.setTargetPosition(castarget);
+
+       // Turn On RUN_TO_POSITION
+       robot.cascade.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+      // Reset the timeout time and start motion.
+            runtime.reset();
+            robot.cascade.setPower(Math.abs(speed));
+
+           /* Keep looping while still active, and there is time left, and motors are running.
+            * And function “&&” will stop when ANY motor hits its target position.
+            * Switch AND (&&) to OR ( || ) to have code run until ALL motors hit their target positions.
+            */
+            while (opModeIsActive() &&
+                   (runtime.seconds() < timeoutS) &&
+                   (robot.frontleft.isBusy() && robot.frontright.isBusy() && robot.rearleft.isBusy() && robot.rearright.isBusy())) {
+
+                // Display it for the driver.
+                telemetry.addData("Path1",  "Running to %7d :%7d", fltarget,  frtarget);
+                telemetry.addData("Path2",  "Running at %7d :%7d",
+                                            robot.frontleft.getCurrentPosition(),
+                                            robot.frontright.getCurrentPosition());
+                telemetry.update();
+            }
+
+            // Stop all motion;
+            robot.frontright.setPower(0);
+            robot.frontleft.setPower(0);
+            robot.rearright.setPower(0);
+            robot.rearleft.setPower(0);
+
+            // Turn off RUN_TO_POSITION
+            robot.frontright.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            robot.frontleft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            robot.rearright.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            robot.rearleft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+            //  sleep(250);   // optional pause after each move
+
+    }
+    }
+/*
+--------------------------------------------------------------------------------------
+Coding for encoderDrive function (speed, front left inches traveled, fr, rl, rr, timeout in seconds) 
+*/
+    public void encoderDrive(double speed,
+                             double flinches, double frinches, double blinches, double brinches,
+                             double timeoutS) {
+        int fltarget; //Front Left Target
+        int frtarget; //Front Right Target
+        int bltarget; //Back Left Target
+        int brtarget; //Back Right Target 
+
+
+        // Ensure that the opmode is still active
+        if (opModeIsActive()) {
+
+            // Calculate new target position.
+            fltarget = robot.frontleft.getCurrentPosition() + (int)(flinches * ticks_per_inch);
+            frtarget = robot.frontright.getCurrentPosition() + (int)(frinches * ticks_per_inch);
+            bltarget = robot.rearleft.getCurrentPosition() + (int)(blinches * ticks_per_inch);
+            brtarget = robot.rearright.getCurrentPosition() + (int)(brinches * ticks_per_inch);
+
+            
+            // Set motors to new target position
+            robot.frontleft.setTargetPosition(fltarget);
+            robot.frontright.setTargetPosition(frtarget);
+            robot.rearleft.setTargetPosition(bltarget);
+            robot.rearright.setTargetPosition(brtarget);
+
+            // Turn On RUN_TO_POSITION
+            robot.frontleft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            robot.frontright.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            robot.rearleft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            robot.rearright.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+            // Reset the timeout time and start motion.
+            runtime.reset();
+            robot.frontleft.setPower(Math.abs(speed));
+            robot.frontright.setPower(Math.abs(speed));
+            robot.rearleft.setPower(Math.abs(speed));
+            robot.rearright.setPower(Math.abs(speed));
+
+            /* Keep looping while still active, and there is time left, and motors are running.
+            * And function “&&” will stop when ANY motor hits its target position.
+            * Switch AND (&&) to OR ( || ) to have code run until ALL motors hit their target positions.
+            */
+            while (opModeIsActive() &&
+                   (runtime.seconds() < timeoutS) &&
+                   (robot.frontleft.isBusy() && robot.frontright.isBusy() && robot.rearleft.isBusy() && robot.rearright.isBusy())) {
+
+                // Display it for the driver.
+                telemetry.addData("Path1",  "Running to %7d :%7d", fltarget,  frtarget);
+                telemetry.addData("Path2",  "Running at %7d :%7d",
+                                            robot.frontleft.getCurrentPosition(),
+                                            robot.frontright.getCurrentPosition());
+                telemetry.update();
+            }
+
+            // Stop all motion;
+            robot.frontright.setPower(0);
+            robot.frontleft.setPower(0);
+            robot.rearright.setPower(0);
+            robot.rearleft.setPower(0);
+
+            // Turn off RUN_TO_POSITION
+            robot.frontright.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            robot.frontleft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            robot.rearright.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            robot.rearleft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+            //  sleep(250);   // optional pause after each move
+  }   
+ }
+}
