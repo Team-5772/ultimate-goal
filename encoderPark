@@ -17,9 +17,9 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 
 
-@Autonomous(name="RFoundEnc", group="Autonomous")
+@Autonomous(name="encoderPark", group="Autonomous")
 
-public class RFoundEnc extends LinearOpMode {
+public class encoderPark extends LinearOpMode {
 
     /* Declare OpMode members. */
     HardwareStrafer         robot   = new HardwareStrafer();   // Use the Strafer's hardware
@@ -77,50 +77,62 @@ public class RFoundEnc extends LinearOpMode {
         // Wait for the game to start (driver presses PLAY)
         waitForStart();
 
-       //Step 0: Grab wobble goal 1
+       //Step: Grab wobble goal 1
         robot.reach.setPosition (0.25); //Reach forward
         sleep(100); 
         robot.pincher.setPosition(1); //Grab wobble goal 1
         sleep(100);
-        robot.cascade.setTargetPosition(
+        encoderCascade(0.6, 1, 1); //Raise cascade 1 inch
+        sleep(250);
 
+        //Step: Drive to launch location
+        robot.launcher.setPower(90); //Spin up laucher
+        encoderDrive(0.8, 24, 24, 24, 24, 3.0); // Move at 80% speed, forwards 24 inches, timeout 3 seconds
 
-        //Step 1: Drive at 60% speed, Backwards 36 inches, timeout at 5 seconds.
-        encoderDrive(0.6,  -30,  -30, -30, -30, 5.0);
         
+        //Step: Launch rings
+        robot.trigger.setPosition(fire); //Fire 1
+        sleep(100);
+        robot.trigger.setPosition(reload); // Reset trigger
+        sleep(100);
+        robot.trigger.setPosition(fire); //Fire 2
+        sleep(100);
+        robot.trigger.setPosition(reload); // Reset trigger
+        sleep(100);
+        robot.trigger.setPosition(fire); //Fire 3
+        sleep(100);
+        robot.trigger.setPosition(reload); // Reset trigger
+        sleep(100);
+        robot.launcher.setPower(0.0); //Stop laucher
         
-        //Step 3: Tow foundation forward 24 inches, timeout at 4 seconds
-        encoderDrive(0.6, 24, 24, 24, 24, 4.0);
+        //Step: Drive to goal location
+        encoderDrive(0.8, 24, 24, 24, 24, 3.0); // Move at 80% speed, forwards 24 inches, timeout 3 seconds
 
-        //Step 4: Rotate foundation Right, timeout at 4 seconds
-        encoderDrive(0.4, 12, -12, 12, -12, 4.0);  // S3: Reverse 24 Inches with 4 Sec timeout
+        //Step: Drop wobble goal 1
+        encoderCascade(0.6, -1, 1); //Lower cascade 1 inch
+        sleep(250);
+        robot.pincher.setPosition(0); //Release wobble goal
+        sleep(100);
+        robot.reach.setPosition (0.0); //Retrack arm
+        sleep(100); 
+     
+        //Step: Back up to park on line
+        encoderDrive(0.6, -12, -12, -12, -12, 4.0); // Move at 60% speed, backwards 12 inches, timeout 4 seconds
+
         
-        //Step 5: Push foundation against wall. (Back up)
-        encoderDrive(0.6, -14, -14, -14, -14, 4.0);
-
-        //Step 6: Raise hooks
-        robot.lefthook.setPosition(1);
-        robot.righthook.setPosition(0);
-        sleep(1000);
-
-        //Step 7: Strafe to wall
-        encoderDrive(1, 24, -24, -24, 24, 4.0);
-
-        //Step 8: Park under bridge (Drive forward)
-        encoderDrive(0.6, 36, 36, 36, 36, 4.0);
 }
 /*
 ------------------------------------------------------------------
-Code for cascadeLift function (% motor speed, change in height in inches, timeout in seconds)
+Code for encoderCascade function (% motor speed, change in height in inches, timeout in seconds)
 */
-    public void cascadeLift(double speed,double casinches,double timeoutS) {
+    public void encoderCascade(double speed, double casinches, double timeoutS) {
         int castarget; //Cascade Target Height
 
     // Ensure that the opmode is still active
     If (opModelsActive()) {
 
         // Calculate new target position.
-       Castarget = robot.cascade.getCurrentPosition() + (int)(casinches * lift_ratio);
+       castarget = robot.cascade.getCurrentPosition() + (int)(casinches * lift_ratio);
 
         // Set motors to new target position
        robot.cascade.setTargetPosition(castarget);
@@ -132,35 +144,27 @@ Code for cascadeLift function (% motor speed, change in height in inches, timeou
             runtime.reset();
             robot.cascade.setPower(Math.abs(speed));
 
-           /* Keep looping while still active, and there is time left, and motors are running.
-            * And function “&&” will stop when ANY motor hits its target position.
-            * Switch AND (&&) to OR ( || ) to have code run until ALL motors hit their target positions.
-            */
-            while (opModeIsActive() &&
-                   (runtime.seconds() < timeoutS) &&
-                   (robot.frontleft.isBusy() && robot.frontright.isBusy() && robot.rearleft.isBusy() && robot.rearright.isBusy())) {
+       /* Keep looping while still active, and there is time left, and motors are running.
+        * And function “&&” will stop when ANY motor hits its target position.
+        * Switch AND (&&) to OR ( || ) to have code run until ALL motors hit their target positions.
+        */
+        while (opModeIsActive() &&
+              (runtime.seconds() < timeoutS) &&
+              (robot.cascade.isBusy())) {
 
-                // Display it for the driver.
-                telemetry.addData("Path1",  "Running to %7d :%7d", fltarget,  frtarget);
-                telemetry.addData("Path2",  "Running at %7d :%7d",
-                                            robot.frontleft.getCurrentPosition(),
-                                            robot.frontright.getCurrentPosition());
-                telemetry.update();
-            }
+        // Display it for the driver.
+        telemetry.addData("Life",  "Running to %7d :%7d", castarget);
+        telemetry.addData("Path2",  "Running at %7d :%7d",robot.cascade.getCurrentPosition());
+        telemetry.update();
+        }
 
-            // Stop all motion;
-            robot.frontright.setPower(0);
-            robot.frontleft.setPower(0);
-            robot.rearright.setPower(0);
-            robot.rearleft.setPower(0);
+        // Stop all motion;
+        robot.cascade.setPower(0);
 
-            // Turn off RUN_TO_POSITION
-            robot.frontright.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            robot.frontleft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            robot.rearright.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            robot.rearleft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        // Turn off RUN_TO_POSITION
+        robot.cascade.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
-            //  sleep(250);   // optional pause after each move
+        //  sleep(250);   // optional pause after each move
 
     }
     }
