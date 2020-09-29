@@ -1,0 +1,117 @@
+//Hardware setup for goBILDA Strafer chassis with Mecanum wheels HardwardStrafer.java
+
+package org.firstinspires.ftc.teamcode;
+
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.CRServo;
+import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.util.Range;
+import com.qualcomm.robotcore.util.ElapsedTime;
+
+/**
+ * This is NOT an opmode.
+ *
+ * This class can be used to define all the specific hardware for a single robot.
+ * In this case that robot is a goBILDA Strafer Chassis.
+ * This hardware file will be referenced by other classes (TeleOp Modes) starting with Strafer.
+ *
+ * This hardware class assumes the following device names have been configured on the robot controller.
+ * Note:  All names are case sensitive. For this reason you may wish to use all lowercase.
+ *
+ * Expansion Hub 2 - Right side
+ * Motor 0:	"frontright"	: Yellow Jacket 5202 19:1	: Right side front drive motor
+ * Motor 1:	"rearright"	: Yellow Jacket 5202 19:1	: Right side rear drive motor
+ * Motor 2:	"intake"	: Yellow Jacket 5202 19:1	: Intake motor
+ * Motor 3:	"launcher"	: Yellow Jacket 5202 5:1	: Launching wheel
+ * Servo 0:	"trigger"	: Standard servo, Torque	: Bumper to push disk into launcher
+ * Servo 1:	-empty-	: -empty-	: -empty-
+ * Servo 2:	-empty-	: -empty-	: -empty-
+ * Servo 3:	-empty-	: -empty-	: -empty-
+ * Servo 4:	-empty-	: -empty-	: -empty-
+ * Servo 5:	-empty-	: -empty-	: -empty-
+ *
+ * Expansion Hub 3 - Left side
+ * Motor 0: "frontleft"	: Yellow Jacket 5202 19:1 	: Left side front drive motor
+ * Motor 1: "rearleft"	: Yellow Jacket 5202 19:1	: Left side rear drive motor
+ * Motor 2: -empty-	: -empty-      	: -empty-
+ * Motor 3: "cascade"	: Yellow Jacket 5202 13:1	: Y travel for wobble arm
+ * Servo 0: “reach”	: Standard servo, Speed	: X travel for wobble arm
+ * Servo 1: "pincher"	: Standard servo, Torque	: Pincher to grab wobble goal
+ * Servo 2: -empty-	: -empty-      	: -empty-
+ * Servo 3: -empty-	: -empty-      	: -empty-
+ * Servo 4: -empty-	: -empty-      	: -empty-
+ * Servo 5: -empty-	: -empty-      	: -empty-
+ */
+public class HardwareStrafer
+{
+    //Declare motors. Declare servos as standard or countinuous.
+    public DcMotor	frontright	= null;
+    public DcMotor	rearright	= null;
+    public DcMotor	frontleft	= null;
+    public DcMotor	rearleft	= null;
+    public DcMotor	intake	= null;
+    public DcMotor	launcher	= null;
+    public DcMotor	cascade	= null;
+    public Servo	trigger	= null;
+    public Servo	reach	= null;
+    public Servo	pincher	= null;
+
+
+    //Set names for cascade variables.
+    public static final double REST			=  0.0 ;
+    public static final double UP_POWER		=  0.75 ;
+    public static final double DOWN_POWER		= -0.75 ;
+
+    /* local OpMode members. */
+    HardwareMap hwMap		=  null;
+    private ElapsedTime period	=  new ElapsedTime();
+
+    /* Constructor */
+    public HardwareStrafer(){
+
+    }
+
+    /* Initialize standard Hardware interfaces */
+    public void init(HardwareMap ahwMap) {
+        // Save reference to Hardware map
+        hwMap = ahwMap;
+
+        // Define and Initialize Motors
+        frontright	= hwMap.get(DcMotor.class, "frontright");
+        rearright		= hwMap.get(DcMotor.class, "rearright");
+        frontleft		= hwMap.get(DcMotor.class, "frontleft");
+        rearleft		= hwMap.get(DcMotor.class, "rearleft");
+        intake		  = hwMap.get(DcMotor.class, "intake");
+        launcher		= hwMap.get(DcMotor.class, "launcher");
+        cascade	  	= hwMap.get(DcMotor.class, "cascade");
+        
+        rearright.setDirection(DcMotor.Direction.FORWARD); // Set to REVERSE if using goBILDA motors
+        frontright.setDirection(DcMotor.Direction.FORWARD); // Set to REVERSE if using goBILDA motors
+        rearleft.setDirection(DcMotor.Direction.REVERSE);// Set to FORWARD if using goBILDA motors
+        frontleft.setDirection(DcMotor.Direction.REVERSE);// Set to FORWARD if using goBILDA motors
+        intakeright.setDirection(DcMotor.Direction.FORWARD);// Set to REVERSE if using goBILDA motors
+        intakeleft.setDirection(DcMotor.Direction.REVERSE);// Set to REVERSE if using goBILDA motors
+        cascade.setDirection(DcMotor.Direction.REVERSE);// Set to FORWARD if using goBILDA motors
+
+        // Set all motors to zero power
+        frontright.setPower(0);
+        rearright.setPower(0);
+        frontleft.setPower(0);
+        rearleft.setPower(0);
+        intake.setPower(0);
+        launcher.setPower(0);
+        cascade.setPower(0);
+
+        
+        // Define all servos.
+        trigger	= hwMap.get(Servo.class, "trigger");
+        reach	  = hwMap.get(Servo.class, "reach");
+        pincher	= hwMap.get(Servo.class, "pincher");
+
+        //Set initial servo positions
+        trigger.setPosition(0.0);
+        reach.setPosition(0.0);
+        pincher.setPosition(0.0);
+        }
+ }
