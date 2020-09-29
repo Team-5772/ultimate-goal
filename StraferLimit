@@ -1,0 +1,196 @@
+//Teleop Mode for goBILDA Strafer chassis with Mecanum wheels HardwareStrafer.java
+ 
+package org.firstinspires.ftc.teamcode;
+ 
+//import com.qualcomm.robotcore.eventloop.opmode.Disabled;
+import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+import com.qualcomm.robotcore.util.Range;
+import com.qualcomm.robotcore.util.Hardware;
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+ 
+/**
+ * GAMEPAD 1 CONTROLS
+ * left_stick_x		= Strafe Left/Right
+ * left_stick_y       	= Forward/Backward
+ * left_stick_button  	= 
+ * right_stick_x      	= Rotate Left/Right
+ * right_stick_y      	= 
+ * right_stick_button 	= 
+ * left_bumper        	= Expel
+ * right_bumper       	= Intake
+ * left_trigger       	= 
+ * right_trigger      	= 
+ * (button)a          	= Close pincher
+ * (button)b          	= Open pincher
+ * (button)y          	= 
+ * (button)x          	= Trigger activate
+ * dpad_up            	= Cascade up
+ * dpad_down          	= Cascade down
+ * dpad_left          	= Retract reach 
+ * dpad_right         	= Extend reach
+ * (button)back       	=
+ * (button)start      	=
+ * (button)guide      	=
+ * -------------------------------------
+ * GAMEPAD 2 CONTROLS
+ * left_stick_x       	= 
+ * left_stick_y       	= 
+ * left_stick_button  	= 
+ * right_stick_x      	= 
+ * right_stick_y      	= 
+ * right_stick_button 	= 
+ * left_bumper        	= 
+ * right_bumper       	= 
+ * left_trigger       	= 
+ * right_trigger      	= 
+ * (button)a          	= 
+ * (button)b          	= 
+ * (button)y          	= 
+ * (button)x          	= 
+ * dpad_up            	= 
+ * dpad_down          	= 
+ * dpad_left          	=
+ * dpad_right         	=
+ * (button)back       	= 
+ * (button)start      	=
+ * (button)guide      	=
+ * -------------------------------------
+ * 
+ */
+ 
+@TeleOp(name="StraferLimit", group="Telop")
+ 
+public class StraferLimit extends OpMode{
+ 
+    /* Declare OpMode members. */
+    // Use the class created to define a goBILDA strafer's hardware.
+    HardwareStrafer robot       = new HardwareStrafer();
+ 
+    /*
+     * Code to run ONCE when the driver hits INIT
+     */
+    @Override
+    public void init() {
+        /* Initialize the hardware variables.
+         * The init() method of the hardware class does all the work here
+         */
+        robot.init(hardwareMap);
+        telemetry.addData("STATUS", "Initialized");    //on screen message
+    
+        //Stop and reset encoders
+        //telemetry.addData(”Encoders reset”);    //on screen message
+        //telemetry.update();
+        robot.rearright.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        robot.rearleft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        robot.frontright.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        robot.frontleft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        robot.intakeright.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        robot.intakeleft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        robot.cascade.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+       
+        // Set all motors to run with encoders.
+        // May want to use RUN_WITHOUT_ENCODER if encoders are not installed.
+        robot.frontright.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        robot.rearright.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        robot.frontleft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        robot.rearleft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        robot.intake.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        robot.launcher.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        robot.cascade.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+    }
+ 
+    /*
+     * Code to run REPEATEDLY after the driver hits INIT, but before they hit PLAY
+     */
+    @Override
+    public void init_loop() {
+    }
+ 
+    /*
+     * Code to run ONCE when the driver hits PLAY
+     */
+    @Override
+    public void start() {
+    }
+ 
+    /*
+     * Code to run REPEATEDLY after the driver hits PLAY but before they hit STOP
+     */
+    @Override
+    
+    
+   
+    public void loop() {
+        //Set reference variables
+        boolean G1rightbumper = gamepad1.right_bumper;
+        boolean G1leftbumper = gamepad1.left_bumper;
+        double G2rightstickY = -gamepad2.right_stick_y;
+        double G2leftstickY = gamepad2.left_stick_y;
+        double armPosition = 0.0;
+        double outPosition = 1.0; //Maximum value for rotation of the arm
+        double inPosition = 0.325; //Minimum value for rotation of the arm.
+        //Be sure the cascade is at the bottom before init.
+        double bottomPosition = -1; //Minimum encoder value for bottom position of cascade lift.
+        double topPosition =8500; //Maximum encoder value for top position of the cascade lift.
+        double clearPosition = 4000; //Minimum encoder value necessary to swing the arm without collision.
+ 
+        //Use Gamepad 1 joysticks to drive robot
+        double magnitude = Math.hypot(gamepad1.left_stick_x, -gamepad1.left_stick_y);
+        double robotAngle = Math.atan2(-gamepad1.left_stick_y, gamepad1.left_stick_x) - Math.PI / 4;
+        double rightX = gamepad1.right_stick_x;
+        final double fld = magnitude * Math.cos(robotAngle) + rightX;
+        final double frd = magnitude * Math.sin(robotAngle) - rightX;
+        final double bld = magnitude * Math.sin(robotAngle) + rightX;
+        final double brd = magnitude * Math.cos(robotAngle) - rightX;
+        robot.frontleft.setPower(fld);
+        robot.frontright.setPower(frd);
+        robot.rearleft.setPower(bld);
+        robot.rearright.setPower(brd);
+        
+        //Use Gamepad 1 triggers to intake/expel blocks
+        robot.intake.setPower(gamepad1.right_trigger);
+        robot.intake.setPower(-gamepad1.left_trigger);
+        
+        //Use Gamepad 1 A Button to move trigger servo and shoot disks.
+        if (gamepad1.x = 1)
+{robot.trigger.setPosition(1.0);}
+        else
+{robot.trigger.setPosition(0.0);}
+ 
+         //Use Gamepad 1 Button A/B to close/open pincher.
+        if (gamepad1.a) {
+            robot.pincher.setPosition(1.0);}
+        if (gamepad1.b) {
+            robot.pincher.setPosition(0.0);}
+ 
+        //Use Gamepad 1 Up Dpad to lift the cascade within set limits.
+        if(gamepad1.dpad_up && robot.cascade.getCurrentPosition() < topPosition) {
+            robot.cascade.setPower(-90);}
+        else {robot.cascade.setPower(0);}
+ 
+       //Use Gamepad 1 Down Dpad to lower the cascade within set limits.
+        if(gamepad1.dpad_down && robot.cascade.getCurrentPosition() < topPosition) {
+            robot.cascade.setPower(90);}
+        else {robot.cascade.setPower(0);}
+ 
+        
+ 
+        //Display cascade encoder value on driver station.
+        telemetry.addData(“Cascade”, robot.cascade.getCurrentPosition());
+        telemetry.update();
+ 
+        //Use Gamepad 1 Dpad right/left buttons to change the reach of the arm        
+        if(gamepad1.dpad_right) {
+            robot.reach.setPosition(1.0);}
+        if(gamepad1.dpad_left) {
+            robot.reach.setPosition(0.325);}
+                
+    }
+ 
+    /*
+     * Code to run ONCE after the driver hits STOP
+     */
+    @Override
+    public void stop() {
+    }
+}
